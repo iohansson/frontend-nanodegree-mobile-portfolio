@@ -20,7 +20,7 @@ cameron *at* udacity *dot* com
 // Here are arrays of all possible pizza ingredients.
 var pizzaIngredients = {};
 pizzaIngredients.meats = [
-  "Pepperoni",
+  'Pepperoni',
   "Sausage",
   "Fennel Sausage",
   "Spicy Sausage",
@@ -401,7 +401,13 @@ var pizzaElementGenerator = function(i) {
 // resizePizzas(size) is called when the slider in the "Our Pizzas" section of the website moves.
 var resizePizzas = function(size) { 
   window.performance.mark("mark_start_resize");   // User Timing API function
-
+    
+  /* getting offsetWidth is an expensive operation
+   * instead of getting it in a loop in determineDx function
+   * we'll compute the width of #randomPizzas container here once
+   */
+  var windowwidth = document.querySelector("#randomPizzas").offsetWidth;
+    
   // Changes the value for the size of the pizza above the slider
   function changeSliderLabel(size) {
     switch(size) {
@@ -422,9 +428,8 @@ var resizePizzas = function(size) {
   changeSliderLabel(size);
 
   // Returns the size difference to change a pizza element from one size to another. Called by changePizzaSlices(size).
-  function determineDx (elem, size) {
-    var oldwidth = elem.offsetWidth;
-    var windowwidth = document.querySelector("#randomPizzas").offsetWidth;
+  function determineDx (elem, elemWidth, size) {
+    var oldwidth = elemWidth;
     var oldsize = oldwidth / windowwidth;
 
     // TODO: change to 3 sizes? no more xl?
@@ -450,10 +455,20 @@ var resizePizzas = function(size) {
 
   // Iterates through pizza elements on the page and changes their widths
   function changePizzaSizes(size) {
-    for (var i = 0; i < document.querySelectorAll(".randomPizzaContainer").length; i++) {
-      var dx = determineDx(document.querySelectorAll(".randomPizzaContainer")[i], size);
-      var newwidth = (document.querySelectorAll(".randomPizzaContainer")[i].offsetWidth + dx) + 'px';
-      document.querySelectorAll(".randomPizzaContainer")[i].style.width = newwidth;
+    /* getting offsetWidth seems to be a very expensive operation 
+     * all .randomPizzaContainer containers have same offsetWidth, we can compute it just once
+     * then pass a parameter to determineDx fn
+     */
+    var randomPizzaContainers = document.querySelectorAll(".randomPizzaContainer"),
+        containerWidth = randomPizzaContainers.length > 0 ? randomPizzaContainers[0].offsetWidth : 0,
+        container,
+        dx,
+        newWidth;
+    for (var i = 0, x = randomPizzaContainers.length; i < x; i++) {
+      container = randomPizzaContainers[i];
+      dx = determineDx(container, containerWidth, size);
+      newwidth = (containerWidth + dx) + 'px';
+      container.style.width = newwidth;
     }
   }
 
@@ -469,8 +484,8 @@ var resizePizzas = function(size) {
 window.performance.mark("mark_start_generating"); // collect timing data
 
 // This for-loop actually creates and appends all of the pizzas when the page loads
+var pizzasDiv = document.getElementById('randomPizzas');
 for (var i = 2; i < 100; i++) {
-  var pizzasDiv = document.getElementById("randomPizzas");
   pizzasDiv.appendChild(pizzaElementGenerator(i));
 }
 
@@ -501,11 +516,20 @@ function logAverageFrame(times) {   // times is the array of User Timing measure
 function updatePositions() {
   frame++;
   window.performance.mark("mark_start_frame");
-
-  var items = document.querySelectorAll('.mover');
-  for (var i = 0; i < items.length; i++) {
-    var phase = Math.sin((document.body.scrollTop / 1250) + (i % 5));
-    items[i].style.left = items[i].basicLeft + 100 * phase + 'px';
+  
+  /* getting scrollTop of document.body is an expensive operation
+   * it seems unreasonable to compute in a loop
+   * because updatePositions is called on scroll event
+   * document.body.scrollTop returns always the same value
+   * throughout the whole loop iterating items array
+   */
+    
+  var items = document.querySelectorAll('.mover'),
+      scrollTop = document.body.scrollTop;
+  for (var i = 0, x = items.length; i < x; i++) {
+    var phase = Math.sin((scrollTop / 1250) + (i % 5)),
+        item = items[i];
+    item.style.left = item.basicLeft + 100 * phase + 'px';
   }
 
   // User Timing API to the rescue again. Seriously, it's worth learning.
